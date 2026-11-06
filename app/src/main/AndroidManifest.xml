@@ -29,6 +29,9 @@
         <activity
             android:name=".ui.pairing.PairingActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.places.PlacesActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

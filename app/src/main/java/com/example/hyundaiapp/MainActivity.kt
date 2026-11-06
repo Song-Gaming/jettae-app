@@ -10,6 +10,7 @@ import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.DoorArea
 import ai.pleos.playground.vehicle.constant.area.DoorValue
 import com.example.hyundaiapp.ui.calendar.CalendarActivity
+import com.example.hyundaiapp.ui.places.PlacesActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,6 +27,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.refreshButton).setOnClickListener { readDoorPosition() }
         findViewById<Button>(R.id.calendarButton).setOnClickListener {
             startActivity(Intent(this, CalendarActivity::class.java))
+        }
+        findViewById<Button>(R.id.placesButton).setOnClickListener {
+            startActivity(Intent(this, PlacesActivity::class.java))
         }
 
         // 차량 서비스 연결. release()는 onDestroy에서 호출

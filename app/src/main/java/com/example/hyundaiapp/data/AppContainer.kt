@@ -5,6 +5,7 @@ import com.example.hyundaiapp.BuildConfig
 import com.example.hyundaiapp.data.calendar.CalendarRepository
 import com.example.hyundaiapp.data.calendar.PrefsLastSyncStore
 import com.example.hyundaiapp.data.local.AppDatabase
+import com.example.hyundaiapp.data.places.PlaceRepository
 import com.example.hyundaiapp.data.remote.FakeServerApi
 import com.example.hyundaiapp.data.remote.HttpServerApi
 import com.example.hyundaiapp.data.remote.ServerApi
@@ -25,6 +26,15 @@ class AppContainer(context: Context) {
         if (isFakeServer) FakeServerApi() else HttpServerApi(BuildConfig.SERVER_BASE_URL, DeviceTokenStore(appContext))
 
     private val database by lazy { AppDatabase.build(appContext) }
+
+    /** A가 도착·출발 이벤트 때 쓰는 [com.example.hyundaiapp.data.places.VisitRecorder]이기도 하다 */
+    val placeRepository by lazy {
+        PlaceRepository(
+            visitDao = database.visitDao(),
+            labelDao = database.placeLabelDao(),
+            clock = Clock.systemDefaultZone(),
+        )
+    }
 
     val calendarRepository by lazy {
         CalendarRepository(

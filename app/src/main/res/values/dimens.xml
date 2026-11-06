@@ -1,0 +1,4 @@
+<resources>
+    <!-- 차량 화면 터치 영역 최소 높이 -->
+    <dimen name="touch_target">72dp</dimen>
+</resources>

@@ -6,6 +6,27 @@
     <string name="door_failed">실패: %1$s</string>
     <string name="door_refresh">다시 조회</string>
     <string name="open_calendar">내 일정</string>
+    <string name="open_places">자주 가는 곳</string>
+
+    <!-- 자주 가는 곳 화면 -->
+    <string name="places_title">자주 가는 곳</string>
+    <string name="places_seed_demo">가상 방문 기록 넣기</string>
+    <string name="places_clear">기록 지우기</string>
+    <string name="places_try_label">말로 찾기 테스트</string>
+    <string name="places_empty">방문 기록이 없어요. [가상 방문 기록 넣기]로 시연 데이터를 넣을 수 있어요.</string>
+    <string name="places_found">"%1$s" → %2$s</string>
+    <string name="places_ambiguous">"%1$s" → 후보가 여러 곳이에요: %2$s. 어디로 갈까요?</string>
+    <string name="places_not_found">"%1$s" → 방문 기록에 없어요. 가까운 곳을 검색합니다(/search).</string>
+    <string name="places_suggestion">지금 시간대 추천 목적지: %1$s</string>
+    <string name="places_no_suggestion">지금 시간대에 추천할 목적지가 없어요.</string>
+    <string name="places_row_meta">%1$s · 최근 30일 %2$d회 · 점수 %3$.1f</string>
+    <string name="places_source_user">직접 지정</string>
+    <string name="places_source_category">자동(카테고리)</string>
+    <string name="places_source_pattern">자동(시간 패턴)</string>
+    <string name="places_source_none">분류 안 됨</string>
+    <string name="places_frequent_badge">★ 자주 가는 곳</string>
+    <string name="places_choose_role">이 장소의 종류</string>
+    <string name="places_reset_role">자동 분류로 되돌리기</string>
 
     <!-- 일정 화면 -->
     <string name="calendar_title">내 일정</string>
