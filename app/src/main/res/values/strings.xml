@@ -5,4 +5,36 @@
     <string name="door_value">값: %1$s</string>
     <string name="door_failed">실패: %1$s</string>
     <string name="door_refresh">다시 조회</string>
+    <string name="open_calendar">내 일정</string>
+
+    <!-- 일정 화면 -->
+    <string name="calendar_title">내 일정</string>
+    <string name="calendar_refresh">새로고침</string>
+    <string name="calendar_unlink">연결 해제</string>
+    <string name="calendar_link">구글 캘린더 연결하기</string>
+    <string name="calendar_checking">일정을 불러오는 중…</string>
+    <string name="calendar_needs_link">구글 캘린더가 연결되어 있지 않아요. 폰으로 QR을 찍어 연결해 주세요.</string>
+    <string name="calendar_empty">앞으로 7일 동안 일정이 없어요.</string>
+    <string name="calendar_last_sync">마지막 갱신 %1$s</string>
+    <string name="calendar_never_synced">아직 갱신한 적 없음</string>
+    <string name="calendar_offline">인터넷에 연결되지 않아 저장된 일정을 보여드려요.</string>
+    <string name="calendar_server_error">서버에 문제가 있어 저장된 일정을 보여드려요.</string>
+    <string name="calendar_rate_limited">잠시 후 다시 시도해 주세요.</string>
+    <string name="calendar_unlink_failed">연결 해제에 실패했어요. 잠시 후 다시 시도해 주세요.</string>
+    <string name="calendar_fake_mode">가짜 서버 모드 (local.properties에 SERVER_BASE_URL을 넣으면 실제 서버 사용)</string>
+    <string name="calendar_all_day">종일</string>
+    <string name="calendar_all_day_range">종일 · %1$s까지</string>
+    <string name="calendar_no_title">(제목 없음)</string>
+
+    <!-- QR 연동 화면 -->
+    <string name="pairing_title">구글 캘린더 연결</string>
+    <string name="pairing_guide">폰 카메라로 QR을 찍고 구글 계정으로 로그인하세요.</string>
+    <string name="pairing_loading">QR을 만드는 중…</string>
+    <string name="pairing_remaining">남은 시간 %1$d:%2$02d</string>
+    <string name="pairing_linked">연결됐어요!</string>
+    <string name="pairing_login_failed">구글 로그인이 취소되었거나 실패했어요.</string>
+    <string name="pairing_expired">QR 유효 시간이 지났어요.</string>
+    <string name="pairing_network_error">서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.</string>
+    <string name="pairing_retry">다시 시도</string>
+    <string name="pairing_close">닫기</string>
 </resources>

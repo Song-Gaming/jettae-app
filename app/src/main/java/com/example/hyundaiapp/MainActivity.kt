@@ -1,5 +1,6 @@
 package com.example.hyundaiapp
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -8,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.DoorArea
 import ai.pleos.playground.vehicle.constant.area.DoorValue
+import com.example.hyundaiapp.ui.calendar.CalendarActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -22,6 +24,9 @@ class MainActivity : AppCompatActivity() {
 
         resultText = findViewById(R.id.resultText)
         findViewById<Button>(R.id.refreshButton).setOnClickListener { readDoorPosition() }
+        findViewById<Button>(R.id.calendarButton).setOnClickListener {
+            startActivity(Intent(this, CalendarActivity::class.java))
+        }
 
         // 차량 서비스 연결. release()는 onDestroy에서 호출
         vehicle = Vehicle(this)

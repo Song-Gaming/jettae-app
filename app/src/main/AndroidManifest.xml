@@ -2,8 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="pleos.car.permission.CAR_DOORS" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".HyundaiApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -21,6 +23,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.calendar.CalendarActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.pairing.PairingActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
