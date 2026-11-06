@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">hyundai app</string>
+    <string name="door_title">운전석 도어 위치</string>
+    <string name="door_loading">조회 중…</string>
+    <string name="door_value">값: %1$s</string>
+    <string name="door_failed">실패: %1$s</string>
+    <string name="door_refresh">다시 조회</string>
+</resources>
