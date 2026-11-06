@@ -11,6 +11,8 @@ import com.example.hyundaiapp.data.calendar.SyncResult
 import com.example.hyundaiapp.data.local.CalendarEventEntity
 import com.example.hyundaiapp.data.remote.ApiError
 import com.example.hyundaiapp.data.remote.ApiException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +30,8 @@ data class CalendarUiState(
     val syncing: Boolean = false,
     val lastSyncMillis: Long? = null,
     val notice: Notice? = null,
+    /** 429를 받아 다시 요청할 수 있을 때까지 남은 초. null이면 제한 없음 */
+    val retryAfterSec: Int? = null,
 )
 
 class CalendarViewModel(
@@ -41,11 +45,20 @@ class CalendarViewModel(
     private val _state = MutableStateFlow(CalendarUiState(lastSyncMillis = repository.lastSyncMillis))
     val state: StateFlow<CalendarUiState> = _state
 
-    fun refresh() {
-        if (_state.value.syncing) return
+    private var cooldownJob: Job? = null
+
+    /** 화면에 들어올 때: 연동 여부를 먼저 확인하고 일정을 받는다 */
+    fun start() = sync { repository.syncIfLinked() }
+
+    /** 새로고침 버튼 */
+    fun refresh() = sync { repository.refresh() }
+
+    private fun sync(block: suspend () -> SyncResult) {
+        val current = _state.value
+        if (current.syncing || current.retryAfterSec != null) return
         viewModelScope.launch {
             _state.update { it.copy(syncing = true) }
-            val result = repository.refresh()
+            val result = block()
             _state.update { current ->
                 when (result) {
                     is SyncResult.Success -> current.copy(
@@ -57,6 +70,20 @@ class CalendarViewModel(
                     is SyncResult.Failed -> current.copy(notice = result.error.toNotice())
                 }.copy(syncing = false)
             }
+            val error = (result as? SyncResult.Failed)?.error
+            if (error is ApiError.RateLimited) startCooldown(error.retryAfterSec ?: DEFAULT_RETRY_SEC)
+        }
+    }
+
+    /** 계약서: 429면 Retry-After 초만큼 기다린다. 그동안 새로고침을 막고 남은 초를 보여 준다 */
+    private fun startCooldown(seconds: Int) {
+        cooldownJob?.cancel()
+        cooldownJob = viewModelScope.launch {
+            for (remaining in seconds downTo 1) {
+                _state.update { it.copy(retryAfterSec = remaining) }
+                delay(1_000)
+            }
+            _state.update { it.copy(retryAfterSec = null, notice = null) }
         }
     }
 
@@ -78,6 +105,8 @@ class CalendarViewModel(
     }
 
     companion object {
+        private const val DEFAULT_RETRY_SEC = 10
+
         val Factory = viewModelFactory {
             initializer {
                 val container = this[APPLICATION_KEY]!!.appContainer

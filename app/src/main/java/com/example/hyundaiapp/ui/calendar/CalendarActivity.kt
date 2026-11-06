@@ -64,15 +64,15 @@ class CalendarActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        // 앱 시작, QR 연동 후 돌아왔을 때 모두 여기서 갱신한다
-        viewModel.refresh()
+        // 앱 시작, QR 연동 후 돌아왔을 때 모두 여기서 연동 여부를 확인하고 갱신한다
+        viewModel.start()
     }
 
     private fun render(state: CalendarUiState, events: List<CalendarEventEntity>) {
         lastSyncText.text = state.lastSyncMillis
             ?.let { getString(R.string.calendar_last_sync, timeFormat.format(Instant.ofEpochMilli(it).atZone(zone))) }
             ?: getString(R.string.calendar_never_synced)
-        refreshButton.isEnabled = !state.syncing
+        refreshButton.isEnabled = !state.syncing && state.retryAfterSec == null
         unlinkButton.visibility = if (state.link == LinkState.LINKED) View.VISIBLE else View.GONE
         linkButton.visibility = if (state.link == LinkState.NEEDS_LINK) View.VISIBLE else View.GONE
 
@@ -80,7 +80,7 @@ class CalendarActivity : AppCompatActivity() {
             state.link == LinkState.NEEDS_LINK -> getString(R.string.calendar_needs_link)
             state.notice == Notice.OFFLINE -> getString(R.string.calendar_offline)
             state.notice == Notice.SERVER_ERROR -> getString(R.string.calendar_server_error)
-            state.notice == Notice.RATE_LIMITED -> getString(R.string.calendar_rate_limited)
+            state.retryAfterSec != null -> getString(R.string.calendar_rate_limited, state.retryAfterSec)
             state.notice == Notice.UNLINK_FAILED -> getString(R.string.calendar_unlink_failed)
             state.link == LinkState.UNKNOWN && events.isEmpty() -> getString(R.string.calendar_checking)
             state.link == LinkState.LINKED && events.isEmpty() -> getString(R.string.calendar_empty)

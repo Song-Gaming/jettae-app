@@ -19,7 +19,7 @@
     <string name="calendar_never_synced">아직 갱신한 적 없음</string>
     <string name="calendar_offline">인터넷에 연결되지 않아 저장된 일정을 보여드려요.</string>
     <string name="calendar_server_error">서버에 문제가 있어 저장된 일정을 보여드려요.</string>
-    <string name="calendar_rate_limited">잠시 후 다시 시도해 주세요.</string>
+    <string name="calendar_rate_limited">요청이 많아요. %1$d초 후에 다시 시도할 수 있어요.</string>
     <string name="calendar_unlink_failed">연결 해제에 실패했어요. 잠시 후 다시 시도해 주세요.</string>
     <string name="calendar_fake_mode">가짜 서버 모드 (local.properties에 SERVER_BASE_URL을 넣으면 실제 서버 사용)</string>
     <string name="calendar_all_day">종일</string>

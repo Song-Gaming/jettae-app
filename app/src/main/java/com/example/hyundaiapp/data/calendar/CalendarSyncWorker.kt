@@ -20,7 +20,8 @@ class CalendarSyncWorker(context: Context, params: WorkerParameters) : Coroutine
         when (val result = applicationContext.appContainer.calendarRepository.refresh()) {
             is SyncResult.Success, SyncResult.NeedsLink -> Result.success()
             is SyncResult.Failed -> when (result.error) {
-                ApiError.Network, ApiError.Upstream, is ApiError.RateLimited -> Result.retry()
+                ApiError.Network, ApiError.Upstream -> Result.retry()
+                // WorkManager는 재시도 간격을 Retry-After에 맞출 수 없어, 이번 회차는 건너뛰고 15분 뒤에 다시 한다
                 else -> Result.success()
             }
         }

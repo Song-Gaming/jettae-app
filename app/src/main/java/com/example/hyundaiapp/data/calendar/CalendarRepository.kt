@@ -44,15 +44,26 @@ class CalendarRepository(
 
     val lastSyncMillis: Long? get() = lastSync.load()
 
+    /**
+     * 화면에 들어올 때 쓴다. 계약서대로 GET /pairing/status로 연동 여부를 먼저 확인하고,
+     * linked일 때만 일정을 받는다.
+     */
+    suspend fun syncIfLinked(): SyncResult {
+        val status = try {
+            api.pairingStatus()
+        } catch (e: ApiException) {
+            return e.error.toSyncResult()
+        }
+        return if (status == PairingStatus.LINKED) refresh() else SyncResult.NeedsLink
+    }
+
+    /** 연동 여부 확인 없이 일정만 다시 받는다. 새로고침 버튼과 주기 갱신에서 쓴다 */
     suspend fun refresh(): SyncResult {
         val window = SyncWindow.around(ZonedDateTime.now(clock))
         val remote = try {
             api.calendarEvents(window.from.toOffsetDateTime(), window.to.toOffsetDateTime())
         } catch (e: ApiException) {
-            return when (e.error) {
-                ApiError.NotLinked, ApiError.ReauthRequired, ApiError.InvalidToken -> SyncResult.NeedsLink
-                else -> SyncResult.Failed(e.error)
-            }
+            return e.error.toSyncResult()
         }
         val entities = remote.mapNotNull { event ->
             try {
@@ -83,6 +94,11 @@ class CalendarRepository(
         api.deletePairing()
         dao.deleteAll()
         lastSync.clear()
+    }
+
+    private fun ApiError.toSyncResult(): SyncResult = when (this) {
+        ApiError.NotLinked, ApiError.ReauthRequired, ApiError.InvalidToken -> SyncResult.NeedsLink
+        else -> SyncResult.Failed(this)
     }
 
     private companion object {

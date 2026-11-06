@@ -44,11 +44,18 @@ class CalendarRepositoryTest {
     private class StubApi : ServerApi {
         var events: List<RemoteEvent> = emptyList()
         var error: ApiError? = null
+        var status = PairingStatus.LINKED
+        var statusError: ApiError? = null
+        var eventCalls = 0
 
         override suspend fun createPairing() = Pairing("https://example.com/p/x", 300)
-        override suspend fun pairingStatus() = PairingStatus.LINKED
+        override suspend fun pairingStatus(): PairingStatus {
+            statusError?.let { throw ApiException(it) }
+            return status
+        }
         override suspend fun deletePairing() = Unit
         override suspend fun calendarEvents(from: OffsetDateTime, to: OffsetDateTime): List<RemoteEvent> {
+            eventCalls++
             error?.let { throw ApiException(it) }
             return events
         }
@@ -119,6 +126,32 @@ class CalendarRepositoryTest {
 
         assertEquals(SyncResult.Success(1), repository.refresh())
         assertEquals(setOf("good"), dao.rows.value.keys)
+    }
+
+    @Test
+    fun `화면 진입 시 연동이 안 됐으면 일정을 부르지 않고 NeedsLink`() = runTest {
+        for (status in listOf(PairingStatus.NONE, PairingStatus.REAUTH_REQUIRED, PairingStatus.PENDING)) {
+            api.status = status
+            assertEquals(SyncResult.NeedsLink, repository.syncIfLinked())
+        }
+        assertEquals(0, api.eventCalls)
+    }
+
+    @Test
+    fun `화면 진입 시 linked면 일정을 받는다`() = runTest {
+        api.status = PairingStatus.LINKED
+        api.events = listOf(event("keep", "2026-11-06T09:00:00+09:00", "2026-11-06T10:00:00+09:00"))
+
+        assertEquals(SyncResult.Success(1), repository.syncIfLinked())
+        assertEquals(1, api.eventCalls)
+    }
+
+    @Test
+    fun `연동 확인이 429면 Retry-After를 담아 실패로 돌려준다`() = runTest {
+        api.statusError = ApiError.RateLimited(20)
+
+        assertEquals(SyncResult.Failed(ApiError.RateLimited(20)), repository.syncIfLinked())
+        assertEquals(0, api.eventCalls)
     }
 
     @Test

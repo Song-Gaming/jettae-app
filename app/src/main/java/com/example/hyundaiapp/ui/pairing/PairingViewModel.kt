@@ -59,6 +59,7 @@ class PairingViewModel(private val repository: CalendarRepository) : ViewModel()
 
     private suspend fun runPairing() {
         var renewals = 0
+        var tokenReissued = false
         while (true) {
             _state.value = PairingUiState.Loading
             awaitVisible()
@@ -67,6 +68,13 @@ class PairingViewModel(private val repository: CalendarRepository) : ViewModel()
             } catch (e: ApiException) {
                 when (val error = e.error) {
                     ApiError.AlreadyLinked -> return linked()
+                    // 401이면 서버 클라이언트가 토큰을 지워 두었으므로, 다시 부르면 새 토큰으로 발급받는다. 한 번만 시도
+                    ApiError.InvalidToken -> if (!tokenReissued) {
+                        tokenReissued = true
+                        continue
+                    } else {
+                        return fail(FailReason.NETWORK)
+                    }
                     is ApiError.RateLimited -> {
                         delay((error.retryAfterSec ?: DEFAULT_RETRY_SEC) * 1000L)
                         continue
@@ -98,8 +106,12 @@ class PairingViewModel(private val repository: CalendarRepository) : ViewModel()
             val status = try {
                 repository.pairingStatus()
             } catch (e: ApiException) {
-                val error = e.error
-                if (error is ApiError.RateLimited) delay((error.retryAfterSec ?: DEFAULT_RETRY_SEC) * 1000L)
+                when (val error = e.error) {
+                    // 토큰이 바뀌면 지금 QR은 이전 토큰에 묶여 있어 쓸 수 없으므로 새 QR을 받는다
+                    ApiError.InvalidToken -> return PairingStatus.EXPIRED
+                    is ApiError.RateLimited -> delay((error.retryAfterSec ?: DEFAULT_RETRY_SEC) * 1000L)
+                    else -> Unit
+                }
                 continue
             }
             when (status) {
