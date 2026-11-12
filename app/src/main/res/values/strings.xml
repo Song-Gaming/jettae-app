@@ -1,8 +1,57 @@
 <resources>
-    <string name="app_name">hyundai app</string>
-    <string name="door_title">운전석 도어 위치</string>
-    <string name="door_loading">조회 중…</string>
-    <string name="door_value">값: %1$s</string>
-    <string name="door_failed">실패: %1$s</string>
-    <string name="door_refresh">다시 조회</string>
+    <string name="app_name">hyundai</string>
+    <string name="tab_sensor">센서</string>
+    <string name="fake_bookmarks">가짜 즐겨찾기 넣기</string>
+    <string name="fake_bookmarks_added">가짜 즐겨찾기를 넣었어요: 새싹유치원, 판교 헬스장</string>
+
+    <!-- 자주 가는 곳 화면 -->
+    <string name="places_title">자주 가는 곳</string>
+    <string name="places_seed_demo">가상 방문 기록 넣기</string>
+    <string name="places_clear">기록 지우기</string>
+    <string name="places_try_label">말로 찾기 테스트</string>
+    <string name="places_empty">방문 기록이 없어요. [가상 방문 기록 넣기]로 시연 데이터를 넣을 수 있어요.</string>
+    <string name="places_found">"%1$s" → %2$s</string>
+    <string name="places_ambiguous">"%1$s" → 후보가 여러 곳이에요: %2$s. 어디로 갈까요?</string>
+    <string name="places_not_found">"%1$s" → 방문 기록에 없어요. 가까운 곳을 검색합니다(/search).</string>
+    <string name="places_suggestion">지금 시간대 추천 목적지: %1$s</string>
+    <string name="places_no_suggestion">지금 시간대에 추천할 목적지가 없어요.</string>
+    <string name="places_row_meta">%1$s · 최근 30일 %2$d회 · 점수 %3$.1f</string>
+    <string name="places_source_user">직접 지정</string>
+    <string name="places_source_category">자동(카테고리)</string>
+    <string name="places_source_pattern">자동(시간 패턴)</string>
+    <string name="places_source_none">분류 안 됨</string>
+    <string name="places_frequent_badge">★ 자주 가는 곳</string>
+    <string name="places_choose_role">이 장소의 종류</string>
+    <string name="places_reset_role">자동 분류로 되돌리기</string>
+
+    <!-- 일정 화면 -->
+    <string name="calendar_title">내 일정</string>
+    <string name="calendar_refresh">새로고침</string>
+    <string name="calendar_unlink">연결 해제</string>
+    <string name="calendar_link">구글 캘린더 연결하기</string>
+    <string name="calendar_checking">일정을 불러오는 중…</string>
+    <string name="calendar_needs_link">구글 캘린더가 연결되어 있지 않아요. 폰으로 QR을 찍어 연결해 주세요.</string>
+    <string name="calendar_empty">앞으로 7일 동안 일정이 없어요.</string>
+    <string name="calendar_last_sync">마지막 갱신 %1$s</string>
+    <string name="calendar_never_synced">아직 갱신한 적 없음</string>
+    <string name="calendar_offline">인터넷에 연결되지 않아 저장된 일정을 보여드려요.</string>
+    <string name="calendar_server_error">서버에 문제가 있어 저장된 일정을 보여드려요.</string>
+    <string name="calendar_rate_limited">요청이 많아요. %1$d초 후에 다시 시도할 수 있어요.</string>
+    <string name="calendar_unlink_failed">연결 해제에 실패했어요. 잠시 후 다시 시도해 주세요.</string>
+    <string name="calendar_fake_mode">가짜 서버 모드 (local.properties에 SERVER_URL을 넣으면 실제 서버 사용)</string>
+    <string name="calendar_all_day">종일</string>
+    <string name="calendar_all_day_range">종일 · %1$s까지</string>
+    <string name="calendar_no_title">(제목 없음)</string>
+
+    <!-- QR 연동 화면 -->
+    <string name="pairing_title">구글 캘린더 연결</string>
+    <string name="pairing_guide">폰 카메라로 QR을 찍고 구글 계정으로 로그인하세요.</string>
+    <string name="pairing_loading">QR을 만드는 중…</string>
+    <string name="pairing_remaining">남은 시간 %1$d:%2$02d</string>
+    <string name="pairing_linked">연결됐어요!</string>
+    <string name="pairing_login_failed">구글 로그인이 취소되었거나 실패했어요.</string>
+    <string name="pairing_expired">QR 유효 시간이 지났어요.</string>
+    <string name="pairing_network_error">서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.</string>
+    <string name="pairing_retry">다시 시도</string>
+    <string name="pairing_close">닫기</string>
 </resources>

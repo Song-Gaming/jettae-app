@@ -1,26 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+    <!-- Vehicle SDK: EvBattery/Fuel = CAR_ENERGY, Odometer(range) = CAR_DRIVE -->
+    <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <!-- Seat occupancy / belt = CAR_SEATS, door & trunk position = CAR_DOORS -->
+    <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
     <uses-permission android:name="pleos.car.permission.CAR_DOORS" />
+    <!-- VehicleSimPanel -> Virtual Console API on 127.0.0.1:8088 (emulator test only) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- AAOS IGNITION_STATE via android.car CarPropertyManager -->
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+    <!-- BootReceiver: head unit boot time as an ignition proxy -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+        android:name=".HyundaiApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.HyundaiApp">
+        android:theme="@style/Theme.Hyundai">
+
+        <uses-library
+            android:name="android.car"
+            android:required="false" />
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Gleo Action: docs show the bare function name, emulator Gleo sends <package>.<function> -->
+            <intent-filter>
+                <action android:name="NAVIGATE_TO_PLACE" />
+                <action android:name="com.example.hyundai.NAVIGATE_TO_PLACE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
+        <!-- Pleos has no system back button: parentActivityName makes AppCompat show the Up arrow in the action bar -->
+        <activity
+            android:name=".ui.pairing.PairingActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
     </application>
 
 </manifest>

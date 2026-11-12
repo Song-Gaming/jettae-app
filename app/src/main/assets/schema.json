@@ -1,0 +1,33 @@
+{
+  "packageName": "com.example.hyundai",
+  "appDescription": "A personalized navigation assistant that starts vehicle route guidance to places the user frequently visits.",
+  "version": "1.0",
+  "actionCalls": [
+    {
+      "type": "function",
+      "function": {
+        "name": "NAVIGATE_TO_PLACE",
+        "description": "Start route guidance to one of the user's personal places that this app has learned from the user's visit history. Use this when the user asks to go to a personal place referred to by its type or role rather than a searchable business name, such as '유치원 안내해줘', '유치원 가자', '학원으로 가자', '헬스장 안내해줘'.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "placeName": {
+              "type": "string",
+              "description": "The place type or name exactly as the user said it."
+            },
+            "confirmed": {
+              "type": "boolean",
+              "description": "Set to true only when the user has agreed after being asked to confirm the destination; omit it on the first request."
+            },
+            "selectedPlace": {
+              "type": "string",
+              "description": "Name of the place the user chose after being asked to pick one of several candidate places; omit it on the first request."
+            }
+          },
+          "required": ["placeName"]
+        },
+        "component": "activity"
+      }
+    }
+  ]
+}

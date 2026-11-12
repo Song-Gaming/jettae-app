@@ -1,4 +1,4 @@
-package com.example.hyundaiapp
+package com.example.hyundai
 
 import org.junit.Test
 
