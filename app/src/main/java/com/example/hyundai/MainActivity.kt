@@ -25,8 +25,10 @@ import android.car.Car
 import android.car.VehiclePropertyIds
 import android.car.hardware.CarPropertyValue
 import android.car.hardware.property.CarPropertyManager
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -42,18 +44,28 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.example.hyundai.data.calendar.pickNextEvent
+import com.example.hyundai.data.local.CalendarEventEntity
 import com.example.hyundai.data.local.VisitSource
 import com.example.hyundai.data.places.Arrival
 import com.example.hyundai.data.places.PersonalMatch
+import com.example.hyundai.data.remote.ApiException
+import com.example.hyundai.nav.arrivalIfLeavingNow
+import com.example.hyundai.nav.departureAt
 import com.example.hyundai.ui.calendar.CalendarPage
 import com.example.hyundai.ui.places.PlacesPage
+import com.example.hyundai.ui.suggest.DepartureNotifier
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
+import java.time.Instant
+import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 private const val GLEO_PACKAGE = "ai.umos.ambientai"
 private const val SHELL_PACKAGE = "com.android.shell"
@@ -118,6 +130,7 @@ class MainActivity : AppCompatActivity() {
     private var destination: RouteInfo? = null
     private var routePending = false // destination chosen before NaviHelper connected
     private var inFlight = false // route requested, Gleo waiting for its callback
+    private var tripEvent: CalendarEventEntity? = null // event whose requestTrip answer is pending
 
     // Emulator navigation emits onRouteStarted 5.8~7.7s after requestRoute, past Gleo's 7s limit,
     // so a request still unanswered at RESPONSE_TIMEOUT_MS is reported as accepted.
@@ -167,11 +180,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Docs only say "ETA in seconds": travel seconds (~1e3) or epoch seconds (~1.8e9)? Compare with onRouteStarted duration.
+        // eta is travel seconds (checked on the emulator). The callback has no request id, so only one trip is asked at a time.
         override fun onTripInfo(tripInfo: TripInfo) {
             runOnUiThread {
-                setStatus("Trip to ${TRIP_TEST_POI.poiName}", "eta=${tripInfo.eta} distance=${tripInfo.distance}m")
+                setStatus("Trip", "eta=${tripInfo.eta}s distance=${tripInfo.distance}m")
                 log("onTripInfo")
+                val event = tripEvent ?: return@runOnUiThread
+                tripEvent = null
+                notifyDeparture(event, tripInfo.eta.toLong())
             }
         }
 
@@ -268,7 +284,7 @@ class MainActivity : AppCompatActivity() {
                     naviHelper.addListener(naviListener)
                     setStatus("NaviHelper", "connected")
                     naviHelper.getBookmarkInfo()
-                    requestTrip(TRIP_TEST_POI)
+                    suggestDeparture("app start")
                     if (routePending) {
                         routePending = false
                         requestRoute()
@@ -291,6 +307,10 @@ class MainActivity : AppCompatActivity() {
             "Last boot (BOOT_COMPLETED)",
             getSharedPreferences(PREFS_EVENTS, Context.MODE_PRIVATE).getString(KEY_LAST_BOOT, null) ?: "-"
         )
+
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
+        }
 
         readVehicleStatus()
         watchCabin()
@@ -335,6 +355,7 @@ class MainActivity : AppCompatActivity() {
                     driving = true
                     awaitingArrivalFix = false
                     recordDeparture()
+                    suggestDeparture("gear D")
                 } else if (selected == VehicleGear.GEAR_PARK && driving) {
                     driving = false
                     awaitingArrivalFix = true
@@ -468,7 +489,58 @@ class MainActivity : AppCompatActivity() {
         statusView.text = status.entries.joinToString("\n") { "${it.key}: ${it.value}" }
     }
 
+    // Next calendar event with a location -> /search -> requestTrip; onTripInfo posts the notification.
+    // Search results stay out of Room and memory (Kakao policy): only the event is kept until the trip answer.
+    private fun suggestDeparture(trigger: String) {
+        if (!connected) return log("Departure suggestion ($trigger) skipped: NaviHelper not connected")
+        lifecycleScope.launch {
+            val events = appContainer.calendarRepository.observeEvents().first()
+            val event = pickNextEvent(System.currentTimeMillis(), events)
+                ?: return@launch log("Departure suggestion ($trigger): no upcoming event with a location")
+            val place = try {
+                appContainer.serverApi.search(event.location.orEmpty()).firstOrNull()
+            } catch (e: ApiException) {
+                return@launch log("Departure suggestion: /search failed ${e.error}")
+            } ?: return@launch log("Departure suggestion: place not found, nothing shown")
+            tripEvent = event
+            // shortcut: first result only; several candidates should let the driver choose (P0-5)
+            requestTrip(
+                RouteInfo(
+                    latitude = place.latitude,
+                    longitude = place.longitude,
+                    poiId = place.id ?: "",
+                    poiName = placeLabel(event),
+                    poiSubId = "",
+                    address = place.roadAddress ?: place.address
+                )
+            )
+        }
+    }
+
+    private fun notifyDeparture(event: CalendarEventEntity, etaSec: Long) {
+        val zone = ZoneId.systemDefault()
+        val now = Instant.now()
+        val start = Instant.ofEpochMilli(event.startMillis)
+        val leaveAt = departureAt(start, etaSec)
+        val minutes = ((etaSec + 59) / 60).toInt()
+        val time = { instant: Instant -> instant.atZone(zone).format(HH_MM) }
+        val title = getString(R.string.departure_title, time(start), event.title ?: getString(R.string.departure_untitled))
+        val text = if (leaveAt.isAfter(now)) getString(R.string.departure_on_time, placeLabel(event), minutes, time(leaveAt))
+        else getString(R.string.departure_late, placeLabel(event), minutes, time(arrivalIfLeavingNow(now, etaSec)))
+        val shown = DepartureNotifier.show(this, event.id, title, text)
+        log(if (shown) "Departure suggestion shown" else "Departure suggestion not shown: notifications not allowed")
+    }
+
+    // Google Maps style "Name, Korea address" or "Name(address)" -> Name, for the notification and poiName
+    private fun placeLabel(event: CalendarEventEntity) =
+        event.location.orEmpty().substringBefore(',').substringBefore('(').trim()
+
     private fun handleIntent(intent: Intent) {
+        if (intent.action == DepartureNotifier.ACTION_START) {
+            // P0-5 starts the route here (search again, then requestRoute)
+            DepartureNotifier.cancel(this)
+            return log("Departure suggestion tapped")
+        }
         if (intent.action != ACTION_NAVIGATE && intent.action != "$packageName.$ACTION_NAVIGATE") return
         val hasReferrerExtra = intent.hasExtra(Intent.EXTRA_REFERRER) || intent.hasExtra(Intent.EXTRA_REFERRER_NAME)
         if (!isGleoCaller(referrer?.host, hasReferrerExtra, BuildConfig.DEBUG)) {
@@ -660,14 +732,6 @@ class MainActivity : AppCompatActivity() {
             poiProvider = ""
         )
 
-        // requestTrip test target only (Gleo candidates come from PlaceRepository): POI from the official NaviHelper docs.
-        val TRIP_TEST_POI = RouteInfo(
-            latitude = 37.48544722,
-            longitude = 127.03636666,
-            poiId = "36khp37hh8gqcm5nqhe5",
-            poiName = "42dot",
-            poiSubId = "0",
-            address = "서울시 강남구 남부순환로 2621"
-        )
+        val HH_MM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
 }

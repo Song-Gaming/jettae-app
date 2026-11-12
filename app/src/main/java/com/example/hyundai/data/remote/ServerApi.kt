@@ -18,7 +18,25 @@ interface ServerApi {
 
     /** GET /calendar/events: from~to와 겹치는 일정 */
     suspend fun calendarEvents(from: OffsetDateTime, to: OffsetDateTime): List<RemoteEvent>
+
+    /** GET /search: 카카오 검색 프록시. 일정 location은 손대지 않고 그대로 query에 넣는다. 결과 없음은 빈 목록 */
+    suspend fun search(query: String): List<SearchPlace>
 }
+
+/**
+ * GET /search 결과 하나. 서버 형식 그대로 두고 Room에 저장하지 않는다(카카오 정책).
+ * 주소 검색으로 찾은 결과는 id, category, distanceM이 null이고 name이 주소일 수 있다.
+ */
+data class SearchPlace(
+    val id: String?,
+    val name: String,
+    val category: String?,
+    val address: String,
+    val roadAddress: String?,
+    val latitude: Double,
+    val longitude: Double,
+    val distanceM: Int?,
+)
 
 data class Pairing(val qrUrl: String, val expiresInSec: Int)
 

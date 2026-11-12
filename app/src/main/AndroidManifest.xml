@@ -16,6 +16,8 @@
     <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
     <!-- BootReceiver: head unit boot time as an ignition proxy -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Departure suggestion notification (targetSdk 36: runtime permission) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".HyundaiApp"
