@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity() {
 
         override fun onRouteStarted(routeStartInfo: RouteStartInfo) {
             runOnUiThread {
-                log("onRouteStarted $routeStartInfo")
+                log("onRouteStarted")
                 finishGleoAction("success", "Route guidance to the destination has started.")
             }
         }
@@ -171,7 +171,7 @@ class MainActivity : AppCompatActivity() {
         override fun onTripInfo(tripInfo: TripInfo) {
             runOnUiThread {
                 setStatus("Trip to ${TRIP_TEST_POI.poiName}", "eta=${tripInfo.eta} distance=${tripInfo.distance}m")
-                log("onTripInfo $tripInfo")
+                log("onTripInfo")
             }
         }
 
@@ -475,12 +475,13 @@ class MainActivity : AppCompatActivity() {
             log("Gleo action rejected: caller ${referrer?.host}")
             return
         }
+        // Place names come from the driver's speech, so they stay out of the log
         val param = runCatching { parseActionParam(intent.getStringExtra("ACTION_PARAM")) }
             .getOrElse {
-                log("ACTION_PARAM parse failed: $it")
+                log("ACTION_PARAM parse failed: ${it.javaClass.simpleName}")
                 JSONObject()
             }
-        log("Gleo action ${intent.action} $param")
+        log("Gleo action ${intent.action} from ${referrer?.host}")
 
         pendingParam = param
         if (bookmarks != null) processPendingRequest()
@@ -572,7 +573,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestRoute() {
         val route = destination ?: return
-        log("requestRoute -> ${route.poiName}")
+        log("requestRoute")
         runCatching { naviHelper.requestRoute(route) }.onFailure {
             log("requestRoute failed: $it")
             finishGleoAction("fail", "The route request was rejected by the navigation service.")
@@ -581,7 +582,7 @@ class MainActivity : AppCompatActivity() {
 
     // Travel estimate only: needs NAVI_ROUTE, not NAVI_ROUTE_SEARCH, so the active route is left alone.
     private fun requestTrip(route: RouteInfo) {
-        log("requestTrip -> ${route.poiName}")
+        log("requestTrip")
         runCatching {
             naviHelper.requestTrip(TripRequest(route.latitude, route.longitude, route.poiId, route.poiName, route.poiSubId))
         }.onFailure { log("requestTrip failed: $it") }
@@ -614,7 +615,7 @@ class MainActivity : AppCompatActivity() {
                 .putExtra("packageName", packageName)
                 .putExtra("response", response.toString())
         )
-        log("Gleo callback $response")
+        log("Gleo callback $status")
     }
 
     // Gleo doc samples send ACTION_PARAM both as a JSON object and as a quoted JSON string.
