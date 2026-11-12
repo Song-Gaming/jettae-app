@@ -55,6 +55,17 @@ import org.json.JSONObject
 import org.json.JSONTokener
 import java.time.ZonedDateTime
 
+private const val GLEO_PACKAGE = "ai.umos.ambientai"
+private const val SHELL_PACKAGE = "com.android.shell"
+
+/**
+ * Only Gleo may start a route. The referrer the system fills in is the caller's package,
+ * but getReferrer() prefers EXTRA_REFERRER(_NAME), which any caller can set, so those intents are refused.
+ * ponytail: debug builds also accept adb shell so `am start` tests keep working.
+ */
+internal fun isGleoCaller(referrerHost: String?, hasReferrerExtra: Boolean, allowShell: Boolean): Boolean =
+    !hasReferrerExtra && (referrerHost == GLEO_PACKAGE || (allowShell && referrerHost == SHELL_PACKAGE))
+
 /**
  * Gleo Action(NAVIGATE_TO_PLACE) 테스트.
  * 후보(자주 방문 장소 + 내비 즐겨찾기 중 이름이 맞는 곳)가 여럿이면 asking으로 선택 요청 -> selectedPlace로 재호출.
@@ -291,6 +302,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // getReferrer() reads getIntent(), so a referrer extra on an earlier intent must not vouch for this one
+        setIntent(intent)
         handleIntent(intent)
     }
 
@@ -457,6 +470,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         if (intent.action != ACTION_NAVIGATE && intent.action != "$packageName.$ACTION_NAVIGATE") return
+        val hasReferrerExtra = intent.hasExtra(Intent.EXTRA_REFERRER) || intent.hasExtra(Intent.EXTRA_REFERRER_NAME)
+        if (!isGleoCaller(referrer?.host, hasReferrerExtra, BuildConfig.DEBUG)) {
+            log("Gleo action rejected: caller ${referrer?.host}")
+            return
+        }
         val param = runCatching { parseActionParam(intent.getStringExtra("ACTION_PARAM")) }
             .getOrElse {
                 log("ACTION_PARAM parse failed: $it")
@@ -589,8 +607,10 @@ class MainActivity : AppCompatActivity() {
             .put("status", status)
             .put("message", message)
             .put("data", data.toString())
+        // The response carries place names, so only Gleo receives it
         sendBroadcast(
             Intent(ACTION_GLEO_RESPONSE)
+                .setPackage(GLEO_PACKAGE)
                 .putExtra("packageName", packageName)
                 .putExtra("response", response.toString())
         )
