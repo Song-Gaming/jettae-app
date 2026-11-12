@@ -53,6 +53,17 @@ class HttpServerApi(
         }
     }
 
+    override suspend fun search(query: String): List<SearchPlace> {
+        val json = authorized("GET", searchUrl(query))
+        return parsing {
+            val array = json.getJSONArray("places")
+            List(array.length()) { i -> array.getJSONObject(i).toSearchPlace() }
+        }
+    }
+
+    internal fun searchUrl(query: String): HttpUrl =
+        url("search").newBuilder().addQueryParameter("query", query).build()
+
     /** 응답 형식이 계약서와 다르면 앱이 죽지 않게 ApiException으로 바꾼다 */
     private inline fun <T> parsing(block: () -> T): T = try {
         block()
@@ -117,6 +128,17 @@ class HttpServerApi(
 }
 
 private fun JSONObject.stringOrNull(name: String): String? = if (isNull(name)) null else getString(name)
+
+private fun JSONObject.toSearchPlace() = SearchPlace(
+    id = stringOrNull("id"),
+    name = getString("name"),
+    category = stringOrNull("category"),
+    address = getString("address"),
+    roadAddress = stringOrNull("road_address"),
+    latitude = getDouble("latitude"),
+    longitude = getDouble("longitude"),
+    distanceM = if (isNull("distance_m")) null else getInt("distance_m"),
+)
 
 private fun JSONObject.toRemoteEvent() = RemoteEvent(
     id = getString("id"),

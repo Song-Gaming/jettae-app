@@ -55,6 +55,7 @@ class CalendarRepositoryTest {
             error?.let { throw ApiException(it) }
             return events
         }
+        override suspend fun search(query: String) = emptyList<com.example.hyundai.data.remote.SearchPlace>()
     }
 
     private class MemoryLastSync : LastSyncStore {

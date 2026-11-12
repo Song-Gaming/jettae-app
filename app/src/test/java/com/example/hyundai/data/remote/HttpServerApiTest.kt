@@ -119,4 +119,25 @@ class HttpServerApiTest {
         }
         assertEquals("dvc_test", tokens.token)
     }
+
+    @Test
+    fun `search는 일정 장소를 그대로 보내고 주소 검색 결과의 null 필드를 받는다`() = runTest {
+        tokens.token = "dvc_test"
+        server.enqueue(
+            MockResponse().setBody(
+                """{ "places": [ { "id": null, "name": "서초 금융 캠퍼스", "category": null,
+                  "address": "서울 서초구 서초동 1641-10", "road_address": "서울 서초구 사임당로23길 27",
+                  "latitude": 37.4919, "longitude": 127.0203, "distance_m": null } ] }"""
+            )
+        )
+
+        val places = api.search("삼성금융캠퍼스(서울 서초구 사임당로23길 27)")
+
+        val request = server.takeRequest()
+        assertEquals("삼성금융캠퍼스(서울 서초구 사임당로23길 27)", request.requestUrl?.queryParameter("query"))
+        val place = places.single()
+        assertNull(place.id)
+        assertNull(place.distanceM)
+        assertEquals(37.4919, place.latitude, 0.0)
+    }
 }

@@ -62,6 +62,24 @@ class FakeServerApi(private val clock: Clock = Clock.systemDefaultZone()) : Serv
         }
     }
 
+    // shortcut: 번지수(숫자)가 있으면 판교 주소 결과 하나, 없으면 결과 없음. 가짜 일정의 세 경우만 흉내 냄
+    override suspend fun search(query: String): List<SearchPlace> {
+        delay(200)
+        if (query.none(Char::isDigit)) return emptyList()
+        return listOf(
+            SearchPlace(
+                id = null,
+                name = query,
+                category = null,
+                address = "경기 성남시 분당구 백현동 532",
+                roadAddress = "경기 성남시 분당구 판교역로 166",
+                latitude = 37.39570,
+                longitude = 127.11054,
+                distanceM = null,
+            )
+        )
+    }
+
     private fun sampleEvents(today: LocalDate, now: ZonedDateTime): List<RemoteEvent> {
         val updated = now.toOffsetDateTime().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
         fun timed(id: String, day: LocalDate, start: LocalTime, end: LocalTime, title: String, location: String?) =
