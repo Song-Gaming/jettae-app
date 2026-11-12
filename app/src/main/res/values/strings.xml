@@ -1,12 +1,8 @@
 <resources>
-    <string name="app_name">hyundai app</string>
-    <string name="door_title">운전석 도어 위치</string>
-    <string name="door_loading">조회 중…</string>
-    <string name="door_value">값: %1$s</string>
-    <string name="door_failed">실패: %1$s</string>
-    <string name="door_refresh">다시 조회</string>
-    <string name="open_calendar">내 일정</string>
-    <string name="open_places">자주 가는 곳</string>
+    <string name="app_name">hyundai</string>
+    <string name="tab_sensor">센서</string>
+    <string name="fake_bookmarks">가짜 즐겨찾기 넣기</string>
+    <string name="fake_bookmarks_added">가짜 즐겨찾기를 넣었어요: 새싹유치원, 판교 헬스장</string>
 
     <!-- 자주 가는 곳 화면 -->
     <string name="places_title">자주 가는 곳</string>
@@ -42,7 +38,7 @@
     <string name="calendar_server_error">서버에 문제가 있어 저장된 일정을 보여드려요.</string>
     <string name="calendar_rate_limited">요청이 많아요. %1$d초 후에 다시 시도할 수 있어요.</string>
     <string name="calendar_unlink_failed">연결 해제에 실패했어요. 잠시 후 다시 시도해 주세요.</string>
-    <string name="calendar_fake_mode">가짜 서버 모드 (local.properties에 SERVER_BASE_URL을 넣으면 실제 서버 사용)</string>
+    <string name="calendar_fake_mode">가짜 서버 모드 (local.properties에 SERVER_URL을 넣으면 실제 서버 사용)</string>
     <string name="calendar_all_day">종일</string>
     <string name="calendar_all_day_range">종일 · %1$s까지</string>
     <string name="calendar_no_title">(제목 없음)</string>

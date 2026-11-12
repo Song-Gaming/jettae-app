@@ -28,6 +28,15 @@
             android:textSize="20sp" />
 
         <Button
+            android:id="@+id/fakeBookmarksButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:minHeight="72dp"
+            android:text="@string/fake_bookmarks"
+            android:textSize="20sp" />
+
+        <Button
             android:id="@+id/clearButton"
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"

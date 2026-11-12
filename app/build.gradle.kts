@@ -5,28 +5,30 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// 서버 주소는 git에 올라가지 않는 local.properties에서 읽는다. 비어 있으면 가짜 서버 모드
+// Server base URL stays out of the source: SERVER_URL env var, else SERVER_URL in local.properties (gitignored).
+// It is baked into the APK, so put only the domain here, never secrets.
 val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.exists()) file.inputStream().use { load(it) }
+    rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use { load(it) }
 }
-val serverBaseUrl: String = localProperties.getProperty("SERVER_BASE_URL", "").trim()
+val serverUrl = System.getenv("SERVER_URL") ?: localProperties.getProperty("SERVER_URL", "")
 
 android {
-    namespace = "com.example.hyundaiapp"
+    namespace = "com.example.hyundai"
     compileSdk {
-        version = release(37)
+        version = release(36) {
+            minorApiLevel = 1
+        }
     }
 
     defaultConfig {
-        applicationId = "com.example.hyundaiapp"
+        applicationId = "com.example.hyundai"
         minSdk = 28
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "SERVER_BASE_URL", "\"$serverBaseUrl\"")
+        buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
     }
 
     buildFeatures {
@@ -36,15 +38,18 @@ android {
     buildTypes {
         release {
             optimization {
-                enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
+                enable = false
             }
         }
     }
+    // AAOS Car API (CarPropertyManager) for IGNITION_STATE
+    useLibrary("android.car")
+
     testOptions {
         // JVM 단위 테스트에서 android.util.Log 같은 호출이 예외 대신 기본값을 돌려주게 한다
         unitTests.isReturnDefaultValues = true
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -52,10 +57,11 @@ android {
 }
 
 dependencies {
-    implementation("ai.pleos.playground:Vehicle:2.3.2")
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.material)
+    implementation(libs.pleos.navi.helper)
+    implementation(libs.pleos.vehicle)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
