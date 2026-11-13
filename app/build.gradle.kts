@@ -35,11 +35,25 @@ android {
         buildConfig = true
     }
 
+    // Release signing: keystore path and passwords live only in local.properties (gitignored).
+    val releaseStoreFile = localProperties.getProperty("RELEASE_STORE_FILE")
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+                keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+                keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             optimization {
                 enable = false
             }
+            if (releaseStoreFile != null) signingConfig = signingConfigs.getByName("release")
         }
     }
     // AAOS Car API (CarPropertyManager) for IGNITION_STATE
