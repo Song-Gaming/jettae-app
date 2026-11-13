@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">hyundai</string>
+    <string name="app_name">제때</string>
     <string name="tab_sensor">센서</string>
     <string name="fake_bookmarks">가짜 즐겨찾기 넣기</string>
     <string name="fake_bookmarks_added">가짜 즐겨찾기를 넣었어요: 새싹유치원, 판교 헬스장</string>
