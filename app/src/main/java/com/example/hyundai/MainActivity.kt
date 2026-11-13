@@ -601,6 +601,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         if (intent.action == DepartureNotifier.ACTION_START) {
+            // This activity is exported: only a tap on our own notification may start a route
+            if (!DepartureNotifier.consumeTap(this, intent)) return log("Departure tap rejected: not from our notification")
             DepartureNotifier.cancel(this)
             log("Departure suggestion tapped")
             intent.getStringExtra(DepartureNotifier.EXTRA_EVENT_ID)?.let(::startSuggestedRoute)
