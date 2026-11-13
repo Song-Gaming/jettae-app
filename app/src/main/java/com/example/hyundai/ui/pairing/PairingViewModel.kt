@@ -12,6 +12,7 @@ import com.example.hyundai.data.calendar.CalendarRepository
 import com.example.hyundai.data.remote.ApiError
 import com.example.hyundai.data.remote.ApiException
 import com.example.hyundai.data.remote.PairingStatus
+import com.example.hyundai.data.remote.ServerModeStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,7 +35,11 @@ enum class FailReason { LOGIN_FAILED, EXPIRED, NETWORK }
  * QR 연동 흐름: POST /pairing으로 QR을 받고, 3초마다 GET /pairing/status를 확인한다.
  * 화면이 안 보이는 동안(onStop 이후)에는 폴링을 멈췄다가 다시 보이면 이어서 한다.
  */
-class PairingViewModel(private val repository: CalendarRepository) : ViewModel() {
+class PairingViewModel(
+    private val repository: CalendarRepository,
+    val serverMode: ServerModeStore,
+    private val chooseServerMode: (Int) -> Unit,
+) : ViewModel() {
 
     private val _state = MutableStateFlow<PairingUiState>(PairingUiState.Loading)
     val state: StateFlow<PairingUiState> = _state
@@ -51,6 +56,17 @@ class PairingViewModel(private val repository: CalendarRepository) : ViewModel()
     }
 
     fun retry() = start()
+
+    /** QR 화면 아래 [가짜 일정 N]: 서버 없이 그 일정에 연동된 것으로 하고 화면을 닫는다 */
+    fun useFakeSchedule(scenario: Int) {
+        job?.cancel()
+        job = viewModelScope.launch {
+            // 다른 서버의 일정이 섞이지 않게 비운다
+            if (scenario != serverMode.mode) repository.clearCache()
+            chooseServerMode(scenario)
+            linked()
+        }
+    }
 
     private fun start() {
         job?.cancel()
@@ -143,7 +159,10 @@ class PairingViewModel(private val repository: CalendarRepository) : ViewModel()
         private const val DEFAULT_RETRY_SEC = 10
 
         val Factory = viewModelFactory {
-            initializer { PairingViewModel(this[APPLICATION_KEY]!!.appContainer.calendarRepository) }
+            initializer {
+                val container = this[APPLICATION_KEY]!!.appContainer
+                PairingViewModel(container.calendarRepository, container.serverMode, container::chooseServerMode)
+            }
         }
     }
 }

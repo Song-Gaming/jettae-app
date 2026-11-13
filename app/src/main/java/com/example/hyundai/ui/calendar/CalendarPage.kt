@@ -2,8 +2,11 @@ package com.example.hyundai.ui.calendar
 
 import android.content.Intent
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -27,7 +30,7 @@ import java.util.Locale
  * 캐시한 일정을 날짜별로 보여 주는 MainActivity 탭 페이지. 앱이 화면에 나올 때마다 서버에서 새로 받아 온다.
  * ViewModel과 수명 주기는 탭을 가진 [activity]의 것을 쓴다.
  */
-class CalendarPage(private val activity: AppCompatActivity) {
+class CalendarPage(private val activity: AppCompatActivity, onSuggestDeparture: () -> Unit) {
 
     private val viewModel: CalendarViewModel by activity.viewModels { CalendarViewModel.Factory }
 
@@ -46,7 +49,8 @@ class CalendarPage(private val activity: AppCompatActivity) {
     private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
 
     init {
-        view.findViewById<View>(R.id.fakeModeText).visibility = if (viewModel.isFakeServer) View.VISIBLE else View.GONE
+        setUpServerMode()
+        view.findViewById<Button>(R.id.suggestButton).setOnClickListener { onSuggestDeparture() }
         linkButton.setOnClickListener { activity.startActivity(Intent(activity, PairingActivity::class.java)) }
         refreshButton.setOnClickListener { viewModel.refresh() }
         unlinkButton.setOnClickListener { viewModel.unlink() }
@@ -57,9 +61,41 @@ class CalendarPage(private val activity: AppCompatActivity) {
             }
         }
         activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
-            // 앱 시작, QR 연동 후 돌아왔을 때 모두 여기서 연동 여부를 확인하고 갱신한다
-            override fun onStart(owner: LifecycleOwner) = viewModel.start()
+            // 앱 시작, QR 연동 후 돌아왔을 때 모두 여기서 연동 여부를 확인하고 갱신한다.
+            // QR 화면에서 가짜 일정을 골랐을 수 있으니 선택 목록도 맞춘다(같은 값이면 변경 이벤트는 무시됨)
+            override fun onStart(owner: LifecycleOwner) {
+                modeSpinner.setSelection(viewModel.serverMode.mode - modeOffset)
+                viewModel.start()
+            }
         })
+    }
+
+    private val modeSpinner: Spinner get() = view.findViewById(R.id.serverModeSpinner)
+    private val modeOffset: Int get() = if (viewModel.serverMode.hasRealServer) 0 else 1
+
+    /** [출발 제안 받기]를 누른 결과. 차량 화면에서는 토스트가 보이지 않아 버튼 옆에 적는다 */
+    fun showSuggestResult(message: Int) {
+        view.findViewById<TextView>(R.id.suggestResultText).setText(message)
+    }
+
+    /** 목록 위치 → 모드 번호. SERVER_URL 없이 빌드했으면 "실제 서버"를 뺀다 */
+    private fun setUpServerMode() {
+        val store = viewModel.serverMode
+        val offset = modeOffset
+        val labels = activity.resources.getStringArray(R.array.server_modes).drop(offset)
+        modeSpinner.apply {
+            adapter = ArrayAdapter(activity, R.layout.item_spinner, labels)
+            setSelection(store.mode - offset)
+            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                    if (position + offset == store.mode) return
+                    this@CalendarPage.view.findViewById<TextView>(R.id.suggestResultText).text = null
+                    viewModel.changeServerMode(position + offset)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>) = Unit
+            }
+        }
     }
 
     private val layoutInflater get() = activity.layoutInflater
@@ -72,7 +108,10 @@ class CalendarPage(private val activity: AppCompatActivity) {
             ?: getString(R.string.calendar_never_synced)
         refreshButton.isEnabled = !state.syncing && state.retryAfterSec == null
         unlinkButton.visibility = if (state.link == LinkState.LINKED) View.VISIBLE else View.GONE
-        linkButton.visibility = if (state.link == LinkState.NEEDS_LINK) View.VISIBLE else View.GONE
+        // 서버가 응답하지 않을 때도 보여 준다: QR 화면에서 서버 오류를 알리고 가짜 일정으로 넘어갈 수 있다
+        val serverDown = state.notice == Notice.OFFLINE || state.notice == Notice.SERVER_ERROR
+        linkButton.visibility =
+            if (state.link == LinkState.NEEDS_LINK || (state.link != LinkState.LINKED && serverDown)) View.VISIBLE else View.GONE
 
         val notice = when {
             state.link == LinkState.NEEDS_LINK -> getString(R.string.calendar_needs_link)

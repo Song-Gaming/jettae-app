@@ -45,14 +45,45 @@
             android:textSize="20sp" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/fakeModeText"
-        android:layout_width="wrap_content"
+    <!-- 시연·심사용: 실제 서버 / 가짜 일정 시나리오 선택, 출발 제안 바로 받기 -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/calendar_fake_mode"
-        android:textSize="16sp"
-        android:visibility="gone" />
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="@string/server_mode_label"
+            android:textSize="20sp" />
+
+        <Spinner
+            android:id="@+id/serverModeSpinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="72dp" />
+
+        <Button
+            android:id="@+id/suggestButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:minHeight="72dp"
+            android:text="@string/departure_suggest_now"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/suggestResultText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:textSize="18sp" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/noticeText"

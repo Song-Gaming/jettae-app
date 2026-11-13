@@ -44,21 +44,26 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
-import com.example.hyundai.data.calendar.pickNextEvent
+import com.example.hyundai.data.calendar.chooseSuggestion
+import com.example.hyundai.data.calendar.suggestionCandidates
 import com.example.hyundai.data.local.CalendarEventEntity
 import com.example.hyundai.data.local.VisitSource
 import com.example.hyundai.data.places.Arrival
 import com.example.hyundai.data.places.PersonalMatch
+import com.example.hyundai.data.places.PlaceClusterer
 import com.example.hyundai.data.remote.ApiException
-import com.example.hyundai.nav.arrivalIfLeavingNow
-import com.example.hyundai.nav.departureAt
+import com.example.hyundai.data.remote.SearchPlace
+import com.example.hyundai.nav.koreanDuration
+import com.example.hyundai.nav.minutesEarly
 import com.example.hyundai.ui.calendar.CalendarPage
 import com.example.hyundai.ui.places.PlacesPage
 import com.example.hyundai.ui.suggest.DepartureNotifier
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -95,6 +100,7 @@ class MainActivity : AppCompatActivity() {
     private var lastGear: VehicleGear? = null
     private var driving = false // D seen since the last arrival
     private var awaitingArrivalFix = false // parked, waiting for onCurrentLocationInfo to record the arrival
+    private var locationWaiter: CompletableDeferred<CurrentLocationInfo>? = null // departure suggestion asking where the car is
     private lateinit var statusView: TextView
     private val status = LinkedHashMap<String, String>() // latest value per key, shown top right
     private lateinit var logView: TextView
@@ -131,6 +137,7 @@ class MainActivity : AppCompatActivity() {
     private var routePending = false // destination chosen before NaviHelper connected
     private var inFlight = false // route requested, Gleo waiting for its callback
     private var tripEvent: CalendarEventEntity? = null // event whose requestTrip answer is pending
+    private lateinit var calendarPage: CalendarPage
 
     // Emulator navigation emits onRouteStarted 5.8~7.7s after requestRoute, past Gleo's 7s limit,
     // so a request still unanswered at RESPONSE_TIMEOUT_MS is reported as accepted.
@@ -194,6 +201,8 @@ class MainActivity : AppCompatActivity() {
         // Answer to getCurrentLocationInfo() sent when the car parks after driving. Coordinates stay out of the log.
         override fun onCurrentLocationInfo(info: CurrentLocationInfo) {
             runOnUiThread {
+                locationWaiter?.complete(info)
+                locationWaiter = null
                 if (!awaitingArrivalFix) return@runOnUiThread
                 awaitingArrivalFix = false
                 // ponytail: PARKED with coordinates only; NAVI arrivals with Kakao id/category need /search first
@@ -246,8 +255,9 @@ class MainActivity : AppCompatActivity() {
             log("Fake bookmarks added")
             Toast.makeText(this, R.string.fake_bookmarks_added, Toast.LENGTH_SHORT).show()
         }
-        // Tabs on top (swipe works too): sensor test, calendar, frequent places.
-        val pages = listOf(testPage, CalendarPage(this).view, placesPage.view)
+        // Tabs on top (swipe works too): calendar, frequent places, sensor test.
+        calendarPage = CalendarPage(this) { suggestDeparture("button") }
+        val pages = listOf(calendarPage.view, placesPage.view, testPage)
         val pager = ViewPager2(this).apply {
             offscreenPageLimit = pages.size - 1 // keep every page attached so each View is created only once
             adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -492,43 +502,97 @@ class MainActivity : AppCompatActivity() {
     // Next calendar event with a location -> /search -> requestTrip; onTripInfo posts the notification.
     // Search results stay out of Room and memory (Kakao policy): only the event is kept until the trip answer.
     private fun suggestDeparture(trigger: String) {
-        if (!connected) return log("Departure suggestion ($trigger) skipped: NaviHelper not connected")
+        // Every outcome is also written next to the [출발 제안 받기] button (toasts don't show on the car screen).
+        val skip = { message: String, reason: Int ->
+            log("Departure suggestion ($trigger): $message")
+            calendarPage.showSuggestResult(reason)
+        }
+        if (!connected) return skip("NaviHelper not connected", R.string.departure_skip_navi)
         lifecycleScope.launch {
+            // Fresh events first so the suggestion matches the list; offline or failed sync falls back to the cache
+            appContainer.calendarRepository.syncIfLinked()
             val events = appContainer.calendarRepository.observeEvents().first()
-            val event = pickNextEvent(System.currentTimeMillis(), events)
-                ?: return@launch log("Departure suggestion ($trigger): no upcoming event with a location")
+            val candidates = suggestionCandidates(System.currentTimeMillis(), events)
+            // An event already under way: if the car is at its place the driver is leaving it, so go for the next one
+            val atOngoing = candidates.ongoing?.let { isCarAt(it) }
+            if (candidates.ongoing != null) log("Departure suggestion: ongoing event, car at its place = $atOngoing")
+            val event = chooseSuggestion(candidates, atOngoing)
+                ?: return@launch skip("no upcoming event with a location", R.string.departure_skip_no_event)
             val place = try {
                 appContainer.serverApi.search(event.location.orEmpty()).firstOrNull()
             } catch (e: ApiException) {
-                return@launch log("Departure suggestion: /search failed ${e.error}")
-            } ?: return@launch log("Departure suggestion: place not found, nothing shown")
+                return@launch skip("/search failed ${e.error}", R.string.departure_skip_search_failed)
+            } ?: return@launch skip("place not found, nothing shown", R.string.departure_skip_not_found)
             tripEvent = event
-            // shortcut: first result only; several candidates should let the driver choose (P0-5)
-            requestTrip(
-                RouteInfo(
-                    latitude = place.latitude,
-                    longitude = place.longitude,
-                    poiId = place.id ?: "",
-                    poiName = placeLabel(event),
-                    poiSubId = "",
-                    address = place.roadAddress ?: place.address
-                )
-            )
+            calendarPage.showSuggestResult(R.string.departure_waiting_eta)
+            // shortcut: first result only; several candidates should let the driver choose
+            requestTrip(routeTo(event, place))
         }
     }
+
+    // null when the place or the car position is unknown. Neither is logged or kept.
+    private suspend fun isCarAt(event: CalendarEventEntity): Boolean? {
+        val place = try {
+            appContainer.serverApi.search(event.location.orEmpty()).firstOrNull()
+        } catch (e: ApiException) {
+            null
+        } ?: return null
+        val car = currentLocation() ?: return null
+        return PlaceClusterer.distanceMeters(car.latitude, car.longitude, place.latitude, place.longitude) <= AT_PLACE_METERS
+    }
+
+    private suspend fun currentLocation(): CurrentLocationInfo? {
+        val waiter = CompletableDeferred<CurrentLocationInfo>().also { locationWaiter = it }
+        runCatching { naviHelper.getCurrentLocationInfo() }.onFailure { return null }
+        return withTimeoutOrNull(LOCATION_WAIT_MS) { waiter.await() }
+    }
+
+    // [안내 시작] on the suggestion: search the event's place again (Kakao results are never kept) and start the route.
+    private fun startSuggestedRoute(eventId: String) {
+        val fail = { message: String, reason: Int ->
+            log("Suggested route: $message")
+            calendarPage.showSuggestResult(reason)
+        }
+        lifecycleScope.launch {
+            val event = appContainer.calendarRepository.observeEvents().first().firstOrNull { it.id == eventId }
+                ?: return@launch fail("event no longer in the calendar", R.string.departure_skip_event_gone)
+            val place = try {
+                appContainer.serverApi.search(event.location.orEmpty()).firstOrNull()
+            } catch (e: ApiException) {
+                return@launch fail("/search failed ${e.error}", R.string.departure_skip_search_failed)
+            } ?: return@launch fail("place not found", R.string.departure_skip_not_found)
+            destination = routeTo(event, place)
+            calendarPage.showSuggestResult(R.string.departure_route_requested)
+            if (connected) requestRoute() else routePending = true
+        }
+    }
+
+    private fun routeTo(event: CalendarEventEntity, place: SearchPlace) = RouteInfo(
+        latitude = place.latitude,
+        longitude = place.longitude,
+        poiId = place.id ?: "",
+        poiName = placeLabel(event),
+        poiSubId = "",
+        address = place.roadAddress ?: place.address
+    )
 
     private fun notifyDeparture(event: CalendarEventEntity, etaSec: Long) {
         val zone = ZoneId.systemDefault()
         val now = Instant.now()
         val start = Instant.ofEpochMilli(event.startMillis)
-        val leaveAt = departureAt(start, etaSec)
-        val minutes = ((etaSec + 59) / 60).toInt()
+        val travel = koreanDuration((etaSec + 59) / 60)
         val time = { instant: Instant -> instant.atZone(zone).format(HH_MM) }
         val title = getString(R.string.departure_title, time(start), event.title ?: getString(R.string.departure_untitled))
-        val text = if (leaveAt.isAfter(now)) getString(R.string.departure_on_time, placeLabel(event), minutes, time(leaveAt))
-        else getString(R.string.departure_late, placeLabel(event), minutes, time(arrivalIfLeavingNow(now, etaSec)))
+        // The suggestion shows when the driver is setting off, so say how early or late leaving now arrives
+        val early = minutesEarly(start, now, etaSec)
+        val text = when {
+            early > 0 -> getString(R.string.departure_early, placeLabel(event), travel, koreanDuration(early))
+            early < 0 -> getString(R.string.departure_late, placeLabel(event), travel, koreanDuration(-early))
+            else -> getString(R.string.departure_on_time, placeLabel(event), travel)
+        }
         val shown = DepartureNotifier.show(this, event.id, title, text)
         log(if (shown) "Departure suggestion shown" else "Departure suggestion not shown: notifications not allowed")
+        calendarPage.showSuggestResult(if (shown) R.string.departure_shown else R.string.departure_skip_notifications)
     }
 
     // Google Maps style "Name, Korea address" or "Name(address)" -> Name, for the notification and poiName
@@ -537,9 +601,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         if (intent.action == DepartureNotifier.ACTION_START) {
-            // P0-5 starts the route here (search again, then requestRoute)
             DepartureNotifier.cancel(this)
-            return log("Departure suggestion tapped")
+            log("Departure suggestion tapped")
+            intent.getStringExtra(DepartureNotifier.EXTRA_EVENT_ID)?.let(::startSuggestedRoute)
+            return
         }
         if (intent.action != ACTION_NAVIGATE && intent.action != "$packageName.$ACTION_NAVIGATE") return
         val hasReferrerExtra = intent.hasExtra(Intent.EXTRA_REFERRER) || intent.hasExtra(Intent.EXTRA_REFERRER_NAME)
@@ -708,7 +773,10 @@ class MainActivity : AppCompatActivity() {
         const val ACTION_GLEO_RESPONSE = "ai.pleos.playground.intent.action.APP_ACTION_RESPONSE"
         const val RESPONSE_TIMEOUT_MS = 5_000L // Gleo cancels the action after 7s
         const val BOOKMARK_WAIT_MS = 1_500L
-        val TAB_TITLES = listOf(R.string.tab_sensor, R.string.calendar_title, R.string.places_title)
+        const val LOCATION_WAIT_MS = 3_000L
+        // ponytail: fixed radius for "car is at the event's place"; tune if big sites (airports, campuses) misjudge
+        const val AT_PLACE_METERS = 300.0
+        val TAB_TITLES = listOf(R.string.calendar_title, R.string.places_title, R.string.tab_sensor)
         const val KEY_OPEN_VISIT = "open_visit_id" // in PREFS_EVENTS: visit still waiting for its departure
         val IGNITION_STATES = listOf("UNDEFINED", "LOCK", "OFF", "ACC", "ON", "START") // AAOS VehicleIgnitionState
 

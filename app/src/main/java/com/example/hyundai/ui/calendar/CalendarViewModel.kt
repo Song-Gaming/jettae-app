@@ -11,6 +11,7 @@ import com.example.hyundai.data.calendar.SyncResult
 import com.example.hyundai.data.local.CalendarEventEntity
 import com.example.hyundai.data.remote.ApiError
 import com.example.hyundai.data.remote.ApiException
+import com.example.hyundai.data.remote.ServerModeStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,8 @@ data class CalendarUiState(
 
 class CalendarViewModel(
     private val repository: CalendarRepository,
-    val isFakeServer: Boolean,
+    val serverMode: ServerModeStore,
+    private val chooseServerMode: (Int) -> Unit,
 ) : ViewModel() {
 
     val events: StateFlow<List<CalendarEventEntity>> =
@@ -87,6 +89,17 @@ class CalendarViewModel(
         }
     }
 
+    /** 실제 서버(0)나 가짜 일정 시나리오(1~)로 바꾸고 그 서버에서 일정을 다시 받는다 */
+    fun changeServerMode(mode: Int) {
+        if (mode == serverMode.mode) return
+        chooseServerMode(mode)
+        viewModelScope.launch {
+            repository.clearCache()
+            _state.update { CalendarUiState() }
+            start()
+        }
+    }
+
     fun unlink() {
         viewModelScope.launch {
             try {
@@ -110,7 +123,7 @@ class CalendarViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val container = this[APPLICATION_KEY]!!.appContainer
-                CalendarViewModel(container.calendarRepository, container.isFakeServer)
+                CalendarViewModel(container.calendarRepository, container.serverMode, container::chooseServerMode)
             }
         }
     }

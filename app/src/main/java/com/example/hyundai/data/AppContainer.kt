@@ -9,21 +9,34 @@ import com.example.hyundai.data.places.PlaceRepository
 import com.example.hyundai.data.remote.FakeServerApi
 import com.example.hyundai.data.remote.HttpServerApi
 import com.example.hyundai.data.remote.ServerApi
+import com.example.hyundai.data.remote.ServerModeStore
+import com.example.hyundai.data.remote.SwitchingServerApi
 import com.example.hyundai.data.token.DeviceTokenStore
 import java.time.Clock
 
 /**
  * 앱 전체에서 하나씩만 쓰는 객체들을 만든다.
- * SERVER_URL(환경변수 또는 local.properties)이 비어 있으면 가짜 서버를 쓴다.
+ * 실제 서버와 가짜 일정 시나리오는 일정 탭에서 고른다. SERVER_URL(환경변수 또는 local.properties)이
+ * 비어 있으면 가짜 일정만 고를 수 있다.
  */
 class AppContainer(context: Context) {
 
     private val appContext = context.applicationContext
 
-    val isFakeServer: Boolean = BuildConfig.SERVER_URL.isBlank()
+    val serverMode = ServerModeStore(appContext, hasRealServer = BuildConfig.SERVER_URL.isNotBlank())
 
-    val serverApi: ServerApi =
-        if (isFakeServer) FakeServerApi() else HttpServerApi(BuildConfig.SERVER_URL, DeviceTokenStore(appContext))
+    private val realServerApi: ServerApi? =
+        if (serverMode.hasRealServer) HttpServerApi(BuildConfig.SERVER_URL, DeviceTokenStore(appContext)) else null
+
+    private val fakeServerApi = FakeServerApi(scenario = { serverMode.mode })
+
+    val serverApi: ServerApi = SwitchingServerApi { realServerApi?.takeUnless { serverMode.isFake } ?: fakeServerApi }
+
+    /** 0 = 실제 서버, 1~ = 가짜 일정 시나리오. 가짜 일정을 고르면 그 캘린더에 연동된 것으로 본다 */
+    fun chooseServerMode(mode: Int) {
+        serverMode.mode = mode
+        if (mode != ServerModeStore.REAL) fakeServerApi.start()
+    }
 
     private val database by lazy { AppDatabase.build(appContext) }
 

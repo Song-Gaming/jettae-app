@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.viewModels
@@ -23,6 +24,8 @@ class PairingActivity : AppCompatActivity() {
     private lateinit var progress: ProgressBar
     private lateinit var statusText: TextView
     private lateinit var retryButton: Button
+    private lateinit var fakeHintText: TextView
+    private lateinit var fakeButtons: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +37,19 @@ class PairingActivity : AppCompatActivity() {
         retryButton = findViewById(R.id.retryButton)
         retryButton.setOnClickListener { viewModel.retry() }
         findViewById<Button>(R.id.closeButton).setOnClickListener { finish() }
+
+        fakeHintText = findViewById(R.id.fakeHintText)
+        fakeButtons = findViewById(R.id.fakeButtons)
+        // server_modes의 0번은 실제 서버, 1번부터가 가짜 일정 시나리오
+        resources.getStringArray(R.array.server_modes).drop(1).forEachIndexed { index, label ->
+            fakeButtons.addView(Button(this).apply {
+                text = label
+                textSize = 20f
+                minHeight = (64 * resources.displayMetrics.density).toInt()
+                isAllCaps = false
+                setOnClickListener { viewModel.useFakeSchedule(index + 1) }
+            })
+        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -56,6 +72,12 @@ class PairingActivity : AppCompatActivity() {
         progress.visibility = if (state is PairingUiState.Loading) View.VISIBLE else View.GONE
         qrImage.visibility = if (state is PairingUiState.ShowQr) View.VISIBLE else View.INVISIBLE
         retryButton.visibility = if (state is PairingUiState.Failed) View.VISIBLE else View.GONE
+        // 가짜 일정 모드면 항상, 실제 서버면 응답이 없을 때만 가짜 일정으로 넘어갈 길을 보여 준다
+        val offline = state is PairingUiState.Failed && state.reason == FailReason.NETWORK
+        val showFake = state !is PairingUiState.Linked && (viewModel.serverMode.isFake || offline)
+        fakeHintText.setText(if (viewModel.serverMode.isFake) R.string.pairing_fake_hint_demo else R.string.pairing_fake_hint_offline)
+        fakeHintText.visibility = if (showFake) View.VISIBLE else View.GONE
+        fakeButtons.visibility = if (showFake) View.VISIBLE else View.GONE
         when (state) {
             PairingUiState.Loading -> statusText.setText(R.string.pairing_loading)
             is PairingUiState.ShowQr -> {

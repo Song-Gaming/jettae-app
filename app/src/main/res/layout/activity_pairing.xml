@@ -74,4 +74,22 @@
             android:textSize="22sp" />
     </LinearLayout>
 
+    <!-- 서버가 응답하지 않거나 가짜 일정 모드일 때: 가짜 일정을 골라 연동된 것처럼 시험 -->
+    <TextView
+        android:id="@+id/fakeHintText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:gravity="center"
+        android:textSize="20sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/fakeButtons"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
 </LinearLayout>

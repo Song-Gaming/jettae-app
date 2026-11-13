@@ -88,6 +88,11 @@ class CalendarRepository(
     /** 구글 연동을 해제하고 이 기기의 일정 캐시도 지운다 */
     suspend fun unlink() {
         api.deletePairing()
+        clearCache()
+    }
+
+    /** 서버 모드를 바꿀 때: 다른 서버의 일정이 섞이지 않게 캐시를 비운다 */
+    suspend fun clearCache() {
         dao.deleteAll()
         lastSync.clear()
     }
