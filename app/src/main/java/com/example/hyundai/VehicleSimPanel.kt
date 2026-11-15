@@ -15,7 +15,7 @@ import kotlin.concurrent.thread
 /**
  * 에뮬레이터 전용 테스트 패널: Pleos Connect Virtual Console의 내부 HTTP API(에뮬레이터 안 127.0.0.1:8088)로
  * 차량 값(VHAL)을 바꾼다. 앱은 바뀐 값을 Vehicle SDK 리스너로 다시 읽는다.
- * 비공식 API(콘솔 웹 페이지가 쓰는 /vehicle/catalog의 write_endpoint)라 실차/마켓 빌드에는 넣지 않는다.
+ * 비공식 API(콘솔 웹 페이지가 쓰는 /vehicle/catalog의 write_endpoint)라 에뮬레이터에서만 동작한다.
  */
 fun vehicleSimPanel(context: Context, onResult: (String) -> Unit): View {
     val column = LinearLayout(context).apply {

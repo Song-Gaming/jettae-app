@@ -78,7 +78,7 @@ private const val SHELL_PACKAGE = "com.android.shell"
 /**
  * Only Gleo may start a route. The referrer the system fills in is the caller's package,
  * but getReferrer() prefers EXTRA_REFERRER(_NAME), which any caller can set, so those intents are refused.
- * ponytail: debug builds also accept adb shell so `am start` tests keep working.
+ * Debug builds also accept adb shell so `am start` tests keep working.
  */
 internal fun isGleoCaller(referrerHost: String?, hasReferrerExtra: Boolean, allowShell: Boolean): Boolean =
     !hasReferrerExtra && (referrerHost == GLEO_PACKAGE || (allowShell && referrerHost == SHELL_PACKAGE))
@@ -205,7 +205,7 @@ class MainActivity : AppCompatActivity() {
                 locationWaiter = null
                 if (!awaitingArrivalFix) return@runOnUiThread
                 awaitingArrivalFix = false
-                // ponytail: PARKED with coordinates only; NAVI arrivals with Kakao id/category need /search first
+                // Recorded as PARKED with coordinates only (no Kakao id/category)
                 val arrival = Arrival(null, null, null, info.latitude, info.longitude, VisitSource.PARKED)
                 lifecycleScope.launch {
                     val visitId = appContainer.placeRepository.recordArrival(arrival)
@@ -525,7 +525,6 @@ class MainActivity : AppCompatActivity() {
             } ?: return@launch skip("place not found, nothing shown", R.string.departure_skip_not_found)
             tripEvent = event
             calendarPage.showSuggestResult(R.string.departure_waiting_eta)
-            // shortcut: first result only; several candidates should let the driver choose
             requestTrip(routeTo(event, place))
         }
     }
@@ -669,7 +668,7 @@ class MainActivity : AppCompatActivity() {
         val frequent = when (val match = appContainer.placeRepository.resolvePersonal(placeName)) {
             is PersonalMatch.Found -> listOf(match.place)
             is PersonalMatch.Ambiguous -> match.candidates
-            PersonalMatch.NotFound -> emptyList() // ponytail: contract says fall back to /search, not wired yet
+            PersonalMatch.NotFound -> emptyList()
         }.map {
             Candidate(
                 "frequently visited",
@@ -776,7 +775,7 @@ class MainActivity : AppCompatActivity() {
         const val RESPONSE_TIMEOUT_MS = 5_000L // Gleo cancels the action after 7s
         const val BOOKMARK_WAIT_MS = 1_500L
         const val LOCATION_WAIT_MS = 3_000L
-        // ponytail: fixed radius for "car is at the event's place"; tune if big sites (airports, campuses) misjudge
+        // Fixed radius for "car is at the event's place"; tune if big sites (airports, campuses) misjudge
         const val AT_PLACE_METERS = 300.0
         val TAB_TITLES = listOf(R.string.calendar_title, R.string.places_title, R.string.tab_sensor)
         const val KEY_OPEN_VISIT = "open_visit_id" // in PREFS_EVENTS: visit still waiting for its departure

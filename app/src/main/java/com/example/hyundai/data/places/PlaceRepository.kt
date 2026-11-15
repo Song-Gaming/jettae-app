@@ -19,7 +19,7 @@ data class Arrival(
     val source: VisitSource,
 )
 
-/** A(nav/ vehicle/)가 도착·출발 이벤트 때 부르는 입구 */
+/** 도착·출발 이벤트 때 부르는 입구 */
 interface VisitRecorder {
     /** 도착 시 호출. 돌려준 id를 출발 때 넘긴다 */
     suspend fun recordArrival(arrival: Arrival): Long
@@ -59,7 +59,7 @@ sealed interface PersonalMatch {
     /** 점수가 비슷한 후보가 여럿이라 사용자에게 물어봐야 함. 점수 높은 순 최대 3개 */
     data class Ambiguous(val candidates: List<FrequentPlace>) : PersonalMatch
 
-    /** 방문 기록에 없음. 계약서대로 /search로 가까운 곳을 찾는다 */
+    /** 방문 기록에 없음 */
     data object NotFound : PersonalMatch
 }
 

@@ -22,7 +22,7 @@ sealed interface StopAdvice {
     data class HipassTopUp(val tollFare: Int, val shortfall: Int?) : StopAdvice
 }
 
-// ponytail: fixed 30km reserve; tune per vehicle and season (EV range drops ~20-30% in winter)
+// Fixed 30km reserve; tune per vehicle and season (EV range drops ~20-30% in winter)
 const val RANGE_RESERVE_M = 30_000
 
 fun adviseStops(trip: TripFacts, reserveM: Int = RANGE_RESERVE_M): List<StopAdvice> = buildList {

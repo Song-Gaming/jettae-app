@@ -78,7 +78,7 @@ class FakeServerApi(
 
     private fun scenarioEvents(scenario: Int, now: ZonedDateTime): List<RemoteEvent> {
         val updated = now.toOffsetDateTime().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        // ponytail: 30분이 지나면 기준을 다시 잡아 오래 켜 둔 시연에서도 일정이 지나가 버리지 않게 함
+        // 30분이 지나면 기준을 다시 잡아 오래 켜 둔 시연에서도 일정이 지나가 버리지 않게 함
         val base = anchor?.takeIf { it.plusMinutes(ANCHOR_MINUTES).isAfter(now) }
             ?: now.truncatedTo(ChronoUnit.MINUTES).also { anchor = it }
         fun timed(id: String, start: ZonedDateTime, minutes: Long, title: String, location: String?) =
@@ -130,7 +130,7 @@ class FakeServerApi(
     private companion object {
         const val ANCHOR_MINUTES = 30L
 
-        // ponytail: 좌표는 시연용 근삿값
+        // 좌표는 시연용 근삿값
         val PLACES = listOf(
             Place("강남대로 396", "서울 강남구 강남대로 396", 37.49795, 127.02762),
             Place("공항로 272", "인천 중구 공항로 272", 37.44916, 126.45061),

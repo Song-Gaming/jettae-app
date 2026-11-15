@@ -40,7 +40,7 @@ class AppContainer(context: Context) {
 
     private val database by lazy { AppDatabase.build(appContext) }
 
-    /** A가 도착·출발 이벤트 때 쓰는 [com.example.hyundai.data.places.VisitRecorder]이기도 하다 */
+    /** 도착·출발 이벤트 때 쓰는 [com.example.hyundai.data.places.VisitRecorder]이기도 하다 */
     val placeRepository by lazy {
         PlaceRepository(
             visitDao = database.visitDao(),
