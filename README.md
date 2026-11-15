@@ -82,7 +82,7 @@ RELEASE_KEY_PASSWORD=...
 ```
 
 ```
-gradlew :app:testDebugUnitTest      # 단위 테스트 72개
+gradlew :app:testDebugUnitTest      # 단위 테스트
 gradlew :app:assembleRelease        # app/build/outputs/apk/release/app-release.apk
 ```
 
